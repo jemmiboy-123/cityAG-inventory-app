@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     Package,
@@ -11,95 +11,121 @@ import {
     Sun,
     LogOut,
     Wallet,
-    ChevronRight
+    ChevronRight,
 } from 'lucide-react';
 import Logo from './Logo';
+import { useAuth } from '../context/AuthContext';
+
+const navGroups = [
+    {
+        label: 'Overview',
+        items: [
+            { icon: LayoutDashboard, label: 'Dashboard',     path: '/' },
+            { icon: Package,         label: 'Inventory',     path: '/inventory' },
+            { icon: HandHelping,     label: 'Borrowed Items', path: '/borrowed' },
+        ],
+    },
+    {
+        label: 'Management',
+        items: [
+            { icon: Wallet,   label: 'Accounting',  path: '/accounting' },
+            { icon: Tags,     label: 'Categories',  path: '/categories' },
+            { icon: BarChart3, label: 'Reports',    path: '/reports' },
+        ],
+    },
+    {
+        label: 'System',
+        items: [
+            { icon: Settings, label: 'Settings', path: '/settings' },
+        ],
+    },
+];
 
 const Sidebar = ({ darkMode, toggleDarkMode }) => {
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Package, label: 'Inventory', path: '/inventory' },
-        { icon: HandHelping, label: 'Borrowed Items', path: '/borrowed' },
-        { icon: Wallet, label: 'Accounting', path: '/accounting' },
-        { icon: Tags, label: 'Categories', path: '/categories' },
-        { icon: BarChart3, label: 'Reports', path: '/reports' },
-        { icon: Settings, label: 'Settings', path: '/settings' },
-    ];
+    const { signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const handleSignOut = async () => {
+        await signOut();
+        navigate('/login');
+    };
 
     return (
         <aside className="sidebar glass">
-            <div className="sidebar-logo-wrapper" style={{ marginBottom: '3.5rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ marginBottom: '2.5rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
                 <Logo size="small" />
             </div>
 
             <nav style={{ flex: 1 }}>
-                <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {navItems.map((item) => (
-                        <li key={item.path}>
-                            <NavLink
-                                to={item.path}
-                                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                                style={({ isActive }) => ({
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '0.85rem 1.25rem',
-                                    borderRadius: 'var(--radius-md)',
-                                    color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                                    backgroundColor: isActive ? 'var(--primary-glow)' : 'transparent',
-                                    fontWeight: isActive ? '700' : '500',
-                                    transition: 'var(--transition)',
-                                    boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.03)' : 'none'
-                                })}
-                            >
-                                {({ isActive }) => (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                                            <span>{item.label}</span>
-                                        </div>
-                                        {isActive && <ChevronRight size={14} />}
-                                    </>
-                                )}
-                            </NavLink>
-                        </li>
-                    ))}
-                </ul>
+                {navGroups.map((group) => (
+                    <div key={group.label}>
+                        <p className="sidebar-section-label">{group.label}</p>
+                        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.5rem' }}>
+                            {group.items.map((item) => (
+                                <li key={item.path}>
+                                    <NavLink
+                                        to={item.path}
+                                        end={item.path === '/'}
+                                        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                                        style={({ isActive }) => ({
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '0.7rem 1.1rem',
+                                            borderRadius: '10px',
+                                            color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                                            backgroundColor: isActive ? 'var(--primary-glow)' : 'transparent',
+                                            fontWeight: isActive ? '700' : '500',
+                                            fontSize: '0.9rem',
+                                            transition: 'var(--transition)',
+                                        })}
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                                                    <span>{item.label}</span>
+                                                </div>
+                                                {isActive && <ChevronRight size={13} />}
+                                            </>
+                                        )}
+                                    </NavLink>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
             </nav>
 
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button
-                    onClick={toggleDarkMode}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '0.85rem 1.25rem',
-                        borderRadius: 'var(--radius-md)',
-                        color: 'var(--text-muted)',
-                        backgroundColor: 'var(--border)',
-                        fontWeight: '600'
-                    }}
-                >
-                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                    <span>{darkMode ? 'Light Theme' : 'Dark Theme'}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <button className="theme-toggle" onClick={toggleDarkMode}>
+                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                    <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
                 </button>
 
-                <NavLink
-                    to="/login"
+                <button
+                    onClick={handleSignOut}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        padding: '0.85rem 1.25rem',
-                        color: '#ff4757',
-                        fontWeight: '700',
-                        fontSize: '0.95rem'
+                        gap: '10px',
+                        padding: '0.7rem 1.1rem',
+                        color: '#e55353',
+                        fontWeight: '600',
+                        fontSize: '0.88rem',
+                        borderRadius: '10px',
+                        transition: 'var(--transition)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        width: '100%',
                     }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fff0f0'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                    <LogOut size={20} />
+                    <LogOut size={16} />
                     <span>Sign Out</span>
-                </NavLink>
+                </button>
             </div>
         </aside>
     );
