@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, UserPlus, Building, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Building, UserPlus, ArrowLeft, Users, Heart, Music } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
+
+const features = [
+    { icon: Users, text: 'For trusted stewards of City Assembly of God' },
+    { icon: Heart, text: 'Built with care for ministry teams' },
+    { icon: Music, text: 'Worship, media, youth — all in one place' },
+];
 
 const Register = () => {
     const [firstName, setFirstName] = useState('');
@@ -20,158 +26,122 @@ const Register = () => {
         setError('');
         setLoading(true);
 
-        const { error } = await signUp(email, password, {
+        const { error: signUpErr } = await signUp(email, password, {
             first_name: firstName,
             last_name: lastName,
             ministry,
         });
 
-        if (error) {
-            setError(error.message);
-            setLoading(false);
-        } else {
-            navigate('/');
-        }
+        setLoading(false);
+        if (signUpErr) { setError(signUpErr.message); return; }
+        navigate('/');
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #fdfbf7 0%, #eaddca 100%)',
-            padding: '2rem'
-        }}>
-            <div className="card" style={{
-                width: '100%',
-                maxWidth: '500px',
-                padding: '3rem 2.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2.5rem',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.08)'
-            }}>
-                <Logo size="medium" />
-
-                <div style={{ textAlign: 'center' }}>
-                    <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Create Account</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Join the inventory management team</p>
+        <div className="auth-layout">
+            <aside className="auth-marketing">
+                <div className="auth-marketing-top">
+                    <Logo size="small" />
                 </div>
 
-                {error && (
-                    <div style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        borderRadius: '8px',
-                        color: '#dc2626',
-                        fontSize: '0.875rem',
-                    }}>
-                        {error}
-                    </div>
-                )}
+                <div className="auth-marketing-body">
+                    <p className="auth-eyebrow">Join the team</p>
+                    <h1 className="auth-headline">
+                        Steward what the church has been given.
+                    </h1>
+                    <p className="auth-lede">
+                        Create an account to catalog assets and keep every ministry stocked.
+                    </p>
 
-                <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>First Name</label>
-                            <div style={{ position: 'relative' }}>
-                                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input
-                                    type="text"
-                                    placeholder="John"
-                                    className="input-field"
-                                    style={{ paddingLeft: '2.5rem' }}
-                                    value={firstName}
-                                    onChange={(e) => setFirstName(e.target.value)}
-                                    required
-                                />
+                    <ul className="auth-features">
+                        {features.map(({ icon: Icon, text }, i) => (
+                            <li key={i}>
+                                <Icon size={15} strokeWidth={1.8} />
+                                <span>{text}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="auth-marketing-foot">
+                    <p>&ldquo;Whatever you do, work at it with all your heart, as working for the Lord.&rdquo;</p>
+                    <p className="auth-citation">— Colossians 3:23</p>
+                </div>
+            </aside>
+
+            <main className="auth-form">
+                <div className="auth-form-inner">
+                    <header className="auth-form-head">
+                        <h2>Create account</h2>
+                        <p>Just a few details to get you started.</p>
+                    </header>
+
+                    {error && <div className="form-error">{error}</div>}
+
+                    <form onSubmit={handleSubmit} className="stacked-form">
+                        <div className="form-grid-2">
+                            <div className="form-field">
+                                <label htmlFor="first-name">First name</label>
+                                <div className="input-with-icon">
+                                    <User size={15} className="input-icon" />
+                                    <input id="first-name" type="text" className="input-field"
+                                        placeholder="John" value={firstName}
+                                        onChange={e => setFirstName(e.target.value)} required />
+                                </div>
+                            </div>
+                            <div className="form-field">
+                                <label htmlFor="last-name">Last name</label>
+                                <input id="last-name" type="text" className="input-field"
+                                    placeholder="Doe" value={lastName}
+                                    onChange={e => setLastName(e.target.value)} required />
                             </div>
                         </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>Last Name</label>
-                            <input
-                                type="text"
-                                placeholder="Doe"
-                                className="input-field"
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                                required
-                            />
+
+                        <div className="form-field">
+                            <label htmlFor="reg-email">Email</label>
+                            <div className="input-with-icon">
+                                <Mail size={15} className="input-icon" />
+                                <input id="reg-email" type="email" className="input-field"
+                                    placeholder="you@example.com" value={email}
+                                    onChange={e => setEmail(e.target.value)} required autoComplete="email" />
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>Email Address</label>
-                        <div style={{ position: 'relative' }}>
-                            <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                            <input
-                                type="email"
-                                placeholder="john@example.com"
-                                className="input-field"
-                                style={{ paddingLeft: '2.5rem' }}
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
+                        <div className="form-field">
+                            <label htmlFor="ministry">Ministry or department</label>
+                            <div className="input-with-icon">
+                                <Building size={15} className="input-icon" />
+                                <input id="ministry" type="text" className="input-field"
+                                    placeholder="e.g. Worship, Media, Youth" value={ministry}
+                                    onChange={e => setMinistry(e.target.value)} required />
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>Ministry / Department</label>
-                        <div style={{ position: 'relative' }}>
-                            <Building size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                            <input
-                                type="text"
-                                placeholder="e.g. Worship, Media"
-                                className="input-field"
-                                style={{ paddingLeft: '2.5rem' }}
-                                value={ministry}
-                                onChange={(e) => setMinistry(e.target.value)}
-                                required
-                            />
+                        <div className="form-field">
+                            <label htmlFor="reg-password">Password</label>
+                            <div className="input-with-icon">
+                                <Lock size={15} className="input-icon" />
+                                <input id="reg-password" type="password" className="input-field"
+                                    placeholder="At least 6 characters" value={password}
+                                    onChange={e => setPassword(e.target.value)} required
+                                    autoComplete="new-password" minLength={6} />
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '600', fontSize: '0.85rem' }}>Password</label>
-                        <div style={{ position: 'relative' }}>
-                            <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                className="input-field"
-                                style={{ paddingLeft: '2.5rem' }}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                        </div>
-                    </div>
+                        <button type="submit" className="btn-primary auth-submit" disabled={loading}>
+                            {loading
+                                ? 'Creating account…'
+                                : <><UserPlus size={15} strokeWidth={2.2} /> Create account</>}
+                        </button>
+                    </form>
 
-                    <button
-                        type="submit"
-                        className="btn-primary"
-                        style={{ width: '100%', justifyContent: 'center', padding: '1rem', marginTop: '0.5rem' }}
-                        disabled={loading}
-                    >
-                        <UserPlus size={20} /> {loading ? 'Creating account...' : 'Create Account'}
-                    </button>
-                </form>
+                    <div className="auth-divider"><span>Already have an account?</span></div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        Already have an account? <Link to="/login" style={{ color: 'var(--primary)', fontWeight: '600' }}>Sign in</Link>
-                    </p>
-                    <Link to="/login" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        <ArrowLeft size={14} /> Back to Login
+                    <Link to="/login" className="btn-ghost auth-secondary">
+                        <ArrowLeft size={14} /> Back to sign in
                     </Link>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

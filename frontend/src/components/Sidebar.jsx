@@ -1,17 +1,8 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard,
-    Package,
-    HandHelping,
-    Tags,
-    BarChart3,
-    Settings,
-    Moon,
-    Sun,
-    LogOut,
-    Wallet,
-    ChevronRight,
+    LayoutDashboard, Package, Tags, BarChart3,
+    Settings, Moon, Sun, LogOut, Wallet,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
@@ -20,16 +11,15 @@ const navGroups = [
     {
         label: 'Overview',
         items: [
-            { icon: LayoutDashboard, label: 'Dashboard',     path: '/' },
-            { icon: Package,         label: 'Inventory',     path: '/inventory' },
-            { icon: HandHelping,     label: 'Borrowed Items', path: '/borrowed' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Package,         label: 'Inventory', path: '/inventory' },
         ],
     },
     {
         label: 'Management',
         items: [
-            { icon: Wallet,   label: 'Accounting',  path: '/accounting' },
-            { icon: Tags,     label: 'Categories',  path: '/categories' },
+            { icon: Wallet,    label: 'Accounting', path: '/accounting' },
+            { icon: Tags,      label: 'Categories', path: '/categories' },
             { icon: BarChart3, label: 'Reports',    path: '/reports' },
         ],
     },
@@ -42,7 +32,7 @@ const navGroups = [
 ];
 
 const Sidebar = ({ darkMode, toggleDarkMode }) => {
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
     const navigate = useNavigate();
 
     const handleSignOut = async () => {
@@ -50,45 +40,35 @@ const Sidebar = ({ darkMode, toggleDarkMode }) => {
         navigate('/login');
     };
 
+    const initials = (
+        (user?.user_metadata?.first_name?.[0] || user?.email?.[0] || '?') +
+        (user?.user_metadata?.last_name?.[0] || '')
+    ).toUpperCase();
+
+    const displayName = user?.user_metadata?.first_name
+        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+        : user?.email || 'Guest';
+
     return (
-        <aside className="sidebar glass">
-            <div style={{ marginBottom: '2.5rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <aside className="sidebar">
+            <div className="sidebar-brand">
                 <Logo size="small" />
             </div>
 
-            <nav style={{ flex: 1 }}>
-                {navGroups.map((group) => (
-                    <div key={group.label}>
+            <nav className="sidebar-nav">
+                {navGroups.map(group => (
+                    <div key={group.label} className="sidebar-group">
                         <p className="sidebar-section-label">{group.label}</p>
-                        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                            {group.items.map((item) => (
+                        <ul>
+                            {group.items.map(item => (
                                 <li key={item.path}>
                                     <NavLink
                                         to={item.path}
                                         end={item.path === '/'}
-                                        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                                        style={({ isActive }) => ({
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '0.7rem 1.1rem',
-                                            borderRadius: '10px',
-                                            color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                                            backgroundColor: isActive ? 'var(--primary-glow)' : 'transparent',
-                                            fontWeight: isActive ? '700' : '500',
-                                            fontSize: '0.9rem',
-                                            transition: 'var(--transition)',
-                                        })}
+                                        className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`}
                                     >
-                                        {({ isActive }) => (
-                                            <>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                                                    <span>{item.label}</span>
-                                                </div>
-                                                {isActive && <ChevronRight size={13} />}
-                                            </>
-                                        )}
+                                        <item.icon size={18} strokeWidth={2} />
+                                        <span>{item.label}</span>
                                     </NavLink>
                                 </li>
                             ))}
@@ -97,34 +77,23 @@ const Sidebar = ({ darkMode, toggleDarkMode }) => {
                 ))}
             </nav>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <button className="theme-toggle" onClick={toggleDarkMode}>
-                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-                    <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+            <div className="sidebar-foot">
+                <div className="sidebar-user">
+                    <div className="sidebar-avatar" aria-hidden="true">{initials}</div>
+                    <div className="sidebar-user-meta">
+                        <p className="sidebar-user-name">{displayName}</p>
+                        {user?.email && <p className="sidebar-user-email">{user.email}</p>}
+                    </div>
+                </div>
+
+                <button className="sidebar-action" onClick={toggleDarkMode}>
+                    {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+                    <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                 </button>
 
-                <button
-                    onClick={handleSignOut}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '0.7rem 1.1rem',
-                        color: '#e55353',
-                        fontWeight: '600',
-                        fontSize: '0.88rem',
-                        borderRadius: '10px',
-                        transition: 'var(--transition)',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        width: '100%',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#fff0f0'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    <LogOut size={16} />
-                    <span>Sign Out</span>
+                <button className="sidebar-action sidebar-action--danger" onClick={handleSignOut}>
+                    <LogOut size={17} />
+                    <span>Sign out</span>
                 </button>
             </div>
         </aside>
