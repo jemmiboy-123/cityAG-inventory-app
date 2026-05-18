@@ -4,16 +4,14 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import ItemForm from './pages/ItemForm';
-import BorrowForm from './pages/BorrowForm';
 import Categories from './pages/Categories';
-import BorrowedItems from './pages/BorrowedItems';
 import Accounting from './pages/Accounting';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-const Reports = () => <div className="card"><h2>Reports</h2><p>Inventory reports and analytics.</p></div>;
-const Settings = () => <div className="card"><h2>Settings</h2><p>System settings and preferences.</p></div>;
+import { PreferencesProvider } from './context/PreferencesContext';
 
 const AppLayout = ({ children, darkMode, toggleDarkMode }) => (
   <div className="app-container">
@@ -59,6 +57,13 @@ function AppRoutes() {
     }
   }, [darkMode]);
 
+  // Keep sidebar's darkMode in sync when Settings page changes the theme.
+  useEffect(() => {
+    const handler = () => setDarkMode(localStorage.getItem('theme') === 'dark');
+    window.addEventListener('theme-changed', handler);
+    return () => window.removeEventListener('theme-changed', handler);
+  }, []);
+
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   return (
@@ -69,8 +74,6 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Dashboard /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Inventory /></ProtectedRoute>} />
       <Route path="/items/new" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><ItemForm /></ProtectedRoute>} />
-      <Route path="/borrow/new" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><BorrowForm /></ProtectedRoute>} />
-      <Route path="/borrowed" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><BorrowedItems /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Categories /></ProtectedRoute>} />
       <Route path="/accounting" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Accounting /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Reports /></ProtectedRoute>} />
@@ -85,7 +88,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <PreferencesProvider>
+          <AppRoutes />
+        </PreferencesProvider>
       </AuthProvider>
     </Router>
   );

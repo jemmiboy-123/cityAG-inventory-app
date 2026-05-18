@@ -1,150 +1,259 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Wallet,
-    TrendingUp,
-    TrendingDown,
-    Plus,
-    Search,
-    Filter,
-    MoreVertical,
-    Download,
-    PieChart
+    Wallet, TrendingUp, TrendingDown, Plus, Search, X,
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+
+const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const startOfMonthISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+const blankForm = () => ({
+    occurred_on: todayISO(),
+    description: '',
+    category: '',
+    amount: '',
+    type: 'credit',
+});
 
 const Accounting = () => {
-    const [transactions] = useState([
-        { id: 1, date: '2024-03-12', description: 'Sunday Tithes & Offerings', category: 'Income', amount: 4520.00, type: 'credit' },
-        { id: 2, date: '2024-03-11', description: 'Electricity Bill - Sanctuary', category: 'Utilities', amount: -650.50, type: 'debit' },
-        { id: 3, date: '2024-03-10', description: 'Worship Team Guitar Strings', category: 'Maintenance', amount: -45.00, type: 'debit' },
-        { id: 4, date: '2024-03-08', description: 'Special Mission Donation', category: 'Missions', amount: 1200.00, type: 'credit' },
-        { id: 5, date: '2024-03-05', description: 'Aircon Cleaning Service', category: 'Maintenance', amount: -120.00, type: 'debit' },
-    ]);
+    const { user } = useAuth();
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [showForm, setShowForm] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [form, setForm] = useState(blankForm());
 
-    const stats = [
-        { label: 'Total Balance', value: '₱124,500.45', icon: Wallet, color: '#556b2f' },
-        { label: 'This Month Income', value: '₱45,200.00', icon: TrendingUp, color: '#2ecc71' },
-        { label: 'This Month Expenses', value: '₱12,850.50', icon: TrendingDown, color: '#e74c3c' },
+    useEffect(() => { fetchTransactions(); }, []);
+
+    const fetchTransactions = async () => {
+        setLoading(true);
+        const { data, error: fetchErr } = await supabase
+            .from('transactions')
+            .select('*')
+            .order('occurred_on', { ascending: false })
+            .order('created_at', { ascending: false });
+        if (fetchErr) console.error('transactions fetch:', fetchErr.message);
+        setTransactions(data || []);
+        setLoading(false);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        const amt = parseFloat(form.amount);
+        if (!form.description.trim() || isNaN(amt) || amt <= 0) {
+            setError('Description and a positive amount are required.');
+            return;
+        }
+        setSaving(true);
+        const signed = form.type === 'credit' ? amt : -amt;
+        const { error: insertErr } = await supabase.from('transactions').insert({
+            occurred_on: form.occurred_on,
+            description: form.description.trim(),
+            category: form.category.trim() || null,
+            amount: signed,
+            type: form.type,
+            created_by: user?.id ?? null,
+        });
+        setSaving(false);
+        if (insertErr) { setError(insertErr.message); return; }
+        setForm(blankForm());
+        setShowForm(false);
+        fetchTransactions();
+    };
+
+    // Derived stats
+    const monthStart = startOfMonthISO();
+    const monthly = transactions.filter(t => t.occurred_on >= monthStart);
+    const balance = transactions.reduce((s, t) => s + Number(t.amount), 0);
+    const monthIncome = monthly
+        .filter(t => t.type === 'credit')
+        .reduce((s, t) => s + Number(t.amount), 0);
+    const monthExpense = monthly
+        .filter(t => t.type === 'debit')
+        .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+
+    // Category breakdown — by absolute value, top 5
+    const byCategory = {};
+    transactions.forEach(t => {
+        const key = (t.category || 'Uncategorized').trim() || 'Uncategorized';
+        byCategory[key] = (byCategory[key] || 0) + Math.abs(Number(t.amount));
+    });
+    const totalByCat = Object.values(byCategory).reduce((s, n) => s + n, 0) || 1;
+    const breakdown = Object.entries(byCategory)
+        .map(([name, value]) => ({ name, value, percent: Math.round((value / totalByCat) * 100) }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+    const summary = [
+        { label: 'Total balance',       value: PHP.format(balance),      hint: 'across all transactions', tone: balance < 0 ? 'down' : null },
+        { label: 'Income this month',   value: PHP.format(monthIncome),  hint: 'credits this month',      tone: 'up' },
+        { label: 'Expenses this month', value: PHP.format(monthExpense), hint: 'debits this month',       tone: 'down' },
     ];
 
+    const filtered = transactions.filter(t => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return t.description.toLowerCase().includes(q)
+            || (t.category && t.category.toLowerCase().includes(q));
+    });
+
     return (
-        <div className="accounting-page">
-            <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="accounting-page animate-in">
+            <header className="dash-header">
                 <div>
-                    <h1 style={{ fontSize: '1.8rem' }}>Accounting & Finance</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Track church income, expenses, and financial health.</p>
+                    <h1 className="dash-title">Accounting</h1>
+                    <p className="dash-subtitle">Church income, expenses, and financial health.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '0.75rem 1rem',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius)',
-                        backgroundColor: 'var(--surface)'
-                    }}>
-                        <Download size={18} /> Export Report
-                    </button>
-                    <button className="btn-primary">
-                        <Plus size={18} /> Add Transaction
-                    </button>
-                </div>
+                <button className="btn-primary btn-primary--compact" onClick={() => setShowForm(s => !s)}>
+                    {showForm
+                        ? <><X size={15} strokeWidth={2.2} /> Close</>
+                        : <><Plus size={15} strokeWidth={2.2} /> Add Transaction</>}
+                </button>
             </header>
 
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                {stats.map((stat, idx) => (
-                    <div key={idx} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                        <div style={{
-                            backgroundColor: `${stat.color}15`,
-                            color: stat.color,
-                            padding: '1rem',
-                            borderRadius: '12px'
-                        }}>
-                            <stat.icon size={28} />
+            {showForm && (
+                <div className="panel txn-form-panel">
+                    {error && <div className="form-error">{error}</div>}
+                    <form onSubmit={handleSubmit} className="txn-form">
+                        <div className="form-field">
+                            <label>Date</label>
+                            <input type="date" className="input-field" value={form.occurred_on}
+                                onChange={e => setForm({ ...form, occurred_on: e.target.value })} />
                         </div>
-                        <div>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.2rem' }}>{stat.label}</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{stat.value}</h3>
+                        <div className="form-field form-field--wide">
+                            <label>Description</label>
+                            <input type="text" className="input-field" placeholder="e.g. Sunday tithes &amp; offerings"
+                                value={form.description}
+                                onChange={e => setForm({ ...form, description: e.target.value })} required />
                         </div>
+                        <div className="form-field">
+                            <label>Category</label>
+                            <input type="text" className="input-field" placeholder="Income, Utilities, Missions…"
+                                value={form.category}
+                                onChange={e => setForm({ ...form, category: e.target.value })} />
+                        </div>
+                        <div className="form-field">
+                            <label>Type</label>
+                            <select className="input-field" value={form.type}
+                                onChange={e => setForm({ ...form, type: e.target.value })}>
+                                <option value="credit">Credit (income)</option>
+                                <option value="debit">Debit (expense)</option>
+                            </select>
+                        </div>
+                        <div className="form-field">
+                            <label>Amount</label>
+                            <input type="number" step="0.01" min="0.01" className="input-field" placeholder="0.00"
+                                value={form.amount}
+                                onChange={e => setForm({ ...form, amount: e.target.value })} required />
+                        </div>
+                        <div className="txn-form-actions">
+                            <button type="button" onClick={() => setShowForm(false)} className="btn-ghost">Cancel</button>
+                            <button type="submit" className="btn-primary btn-primary--compact" disabled={saving}>
+                                {saving ? 'Saving…' : 'Save transaction'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            <section className="summary-strip" aria-label="Accounting summary">
+                {summary.map((s, i) => (
+                    <div key={i} className="summary-cell">
+                        <p className="summary-label">{s.label}</p>
+                        <p className={`summary-value${s.tone === 'up' ? ' tone-up' : ''}${s.tone === 'down' ? ' tone-down' : ''}`}>
+                            {s.value}
+                        </p>
+                        <p className="summary-hint">{s.hint}</p>
                     </div>
                 ))}
             </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
-                <section className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.2rem' }}>Recent Transactions</h2>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <div style={{ position: 'relative' }}>
-                                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input type="text" placeholder="Search..." className="input-field" style={{ padding: '0.5rem 0.5rem 0.5rem 2rem', width: '200px', fontSize: '0.9rem' }} />
-                            </div>
-                            <button style={{ padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '8px' }}><Filter size={18} /></button>
+            <div className="dash-grid dash-grid--wide">
+                <section className="panel">
+                    <div className="panel-head">
+                        <h2 className="panel-title">Recent transactions</h2>
+                        <div className="search-inline">
+                            <Search size={13} />
+                            <input type="text" placeholder="Search…" value={search}
+                                onChange={e => setSearch(e.target.value)} />
                         </div>
                     </div>
 
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.9rem' }}>Date</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.9rem' }}>Description</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.9rem' }}>Category</th>
-                                    <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.9rem', textAlign: 'right' }}>Amount</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right' }}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {transactions.map((t) => (
-                                    <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '1rem', fontSize: '0.9rem' }}>{t.date}</td>
-                                        <td style={{ padding: '1rem', fontWeight: '500', fontSize: '0.95rem' }}>{t.description}</td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <span style={{ backgroundColor: '#f0f4f8', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>{t.category}</span>
-                                        </td>
-                                        <td style={{
-                                            padding: '1rem',
-                                            textAlign: 'right',
-                                            fontWeight: '700',
-                                            color: t.type === 'credit' ? '#2ecc71' : '#e74c3c'
-                                        }}>
-                                            {t.type === 'credit' ? '+' : ''}{t.amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                            <button style={{ color: 'var(--text-muted)' }}><MoreVertical size={16} /></button>
-                                        </td>
+                    {loading ? (
+                        <p className="muted-center">Loading…</p>
+                    ) : filtered.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon"><Wallet size={18} /></div>
+                            <p className="empty-title">{search ? 'No matches' : 'No transactions yet'}</p>
+                            <p className="empty-hint">
+                                {search ? 'Try a different search.' : 'Add the first transaction to get started.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="data-table-wrap">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th className="right">Amount</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {filtered.map(t => (
+                                        <tr key={t.id}>
+                                            <td className="muted">
+                                                {new Date(t.occurred_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </td>
+                                            <td className="strong">{t.description}</td>
+                                            <td>{t.category ? <span className="chip">{t.category}</span> : <span className="muted">—</span>}</td>
+                                            <td className={`right strong ${t.type === 'credit' ? 'tone-up' : 'tone-down'}`}>
+                                                {t.type === 'credit' ? '+' : ''}{PHP.format(Number(t.amount))}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </section>
 
-                <section className="card">
-                    <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <PieChart size={20} color="var(--primary)" /> Budget Distribution
-                    </h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {[
-                            { name: 'Tithes & Offerings', percent: 65, color: '#556b2f' },
-                            { name: 'Missions', percent: 15, color: '#3498db' },
-                            { name: 'Building Fund', percent: 10, color: '#f1c40f' },
-                            { name: 'Youth Ministry', percent: 10, color: '#9b59b6' },
-                        ].map((item, idx) => (
-                            <div key={idx}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                                    <span>{item.name}</span>
-                                    <span style={{ fontWeight: '600' }}>{item.percent}%</span>
-                                </div>
-                                <div style={{ height: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${item.percent}%`, backgroundColor: item.color, borderRadius: '4px' }}></div>
-                                </div>
-                            </div>
-                        ))}
+                <section className="panel">
+                    <div className="panel-head">
+                        <h2 className="panel-title">By category</h2>
                     </div>
-                    <button style={{ width: '100%', padding: '0.75rem', marginTop: '2rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)' }}>
-                        Configure Budget Goals
-                    </button>
+                    {breakdown.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon"><TrendingUp size={18} /></div>
+                            <p className="empty-title">No data yet</p>
+                            <p className="empty-hint">Category breakdown will appear once you log transactions.</p>
+                        </div>
+                    ) : (
+                        <ul className="bar-list">
+                            {breakdown.map((b, i) => (
+                                <li key={i}>
+                                    <div className="bar-head">
+                                        <span className="bar-name">{b.name}</span>
+                                        <span className="bar-pct">{b.percent}%</span>
+                                    </div>
+                                    <div className="bar-track">
+                                        <div className="bar-fill" style={{ width: `${b.percent}%` }} />
+                                    </div>
+                                    <p className="bar-value">{PHP.format(b.value)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </section>
             </div>
         </div>

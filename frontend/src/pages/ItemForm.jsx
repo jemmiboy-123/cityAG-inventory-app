@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Save } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Save, ArrowLeft } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+
+const CONDITIONS = ['New', 'Good', 'Fair', 'Poor'];
 
 const ItemForm = () => {
     const navigate = useNavigate();
@@ -9,11 +11,17 @@ const ItemForm = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [form, setForm] = useState({
-        name: '', category_id: '', quantity: 1, location: '', description: '', condition: 'Good',
+        name: '',
+        category_id: '',
+        quantity: 1,
+        location: '',
+        description: '',
+        condition: 'Good',
     });
 
     useEffect(() => {
-        supabase.from('categories').select('id, name').order('name').then(({ data }) => setCategories(data || []));
+        supabase.from('categories').select('id, name').order('name')
+            .then(({ data }) => setCategories(data || []));
     }, []);
 
     const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -21,94 +29,89 @@ const ItemForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        if (!form.name.trim()) { setError('Item name is required.'); return; }
         setSaving(true);
 
-        const { error } = await supabase.from('items').insert({
-            name: form.name,
+        const { error: insertErr } = await supabase.from('items').insert({
+            name: form.name.trim(),
             category_id: form.category_id || null,
-            quantity: parseInt(form.quantity),
-            location: form.location,
-            description: form.description,
+            quantity: parseInt(form.quantity, 10) || 0,
+            location: form.location.trim() || null,
+            description: form.description.trim() || null,
             condition: form.condition,
         });
 
-        if (error) {
-            setError(error.message);
-            setSaving(false);
-        } else {
-            navigate('/inventory');
-        }
+        setSaving(false);
+        if (insertErr) { setError(insertErr.message); return; }
+        navigate('/inventory');
     };
 
     return (
-        <div className="item-form-page">
-            <header style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.8rem' }}>Add New Item</h1>
-                <p style={{ color: 'var(--text-muted)' }}>Enter the details of the new inventory item.</p>
+        <div className="item-form-page animate-in">
+            <header className="dash-header">
+                <div>
+                    <Link to="/inventory" className="back-link">
+                        <ArrowLeft size={14} /> Back to inventory
+                    </Link>
+                    <h1 className="dash-title">Add new item</h1>
+                    <p className="dash-subtitle">Catalog a new asset or piece of equipment.</p>
+                </div>
             </header>
 
-            <div className="card" style={{ maxWidth: '800px' }}>
-                {error && (
-                    <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', fontSize: '0.875rem' }}>
-                        {error}
-                    </div>
-                )}
-                <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Item Name *</label>
-                            <input type="text" placeholder="e.g. Yamaha PSR-E373" className="input-field" value={form.name} onChange={set('name')} required />
-                        </div>
+            <div className="panel" style={{ maxWidth: '760px' }}>
+                {error && <div className="form-error">{error}</div>}
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Category</label>
+                <form onSubmit={handleSubmit} className="stacked-form">
+                    <div className="form-field">
+                        <label>Item name *</label>
+                        <input type="text" className="input-field"
+                            placeholder="e.g. Yamaha PSR-E373 keyboard"
+                            value={form.name} onChange={set('name')} required />
+                    </div>
+
+                    <div className="form-grid-2">
+                        <div className="form-field">
+                            <label>Category</label>
                             <select className="input-field" value={form.category_id} onChange={set('category_id')}>
-                                <option value="">Select Category</option>
-                                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                <option value="">No category</option>
+                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Quantity</label>
-                                <input type="number" min="0" className="input-field" value={form.quantity} onChange={set('quantity')} />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Condition</label>
-                                <select className="input-field" value={form.condition} onChange={set('condition')}>
-                                    <option>Good</option>
-                                    <option>Fair</option>
-                                    <option>Poor</option>
-                                    <option>New</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Storage Location</label>
-                            <input type="text" placeholder="e.g. Storage Room A, Shelf 2" className="input-field" value={form.location} onChange={set('location')} />
+                        <div className="form-field">
+                            <label>Condition</label>
+                            <select className="input-field" value={form.condition} onChange={set('condition')}>
+                                {CONDITIONS.map(c => <option key={c}>{c}</option>)}
+                            </select>
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Description</label>
-                            <textarea placeholder="Add any specific details, serial numbers, or notes..." className="input-field" style={{ height: '120px', resize: 'none' }} value={form.description} onChange={set('description')}></textarea>
+                    <div className="form-grid-2">
+                        <div className="form-field">
+                            <label>Quantity</label>
+                            <input type="number" min="0" className="input-field"
+                                value={form.quantity} onChange={set('quantity')} />
                         </div>
-
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Upload Photo</label>
-                            <div style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius)', height: '150px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '0.5rem', cursor: 'pointer', backgroundColor: 'rgba(0,0,0,0.02)' }}>
-                                <Camera size={24} />
-                                <span style={{ fontSize: '0.9rem' }}>Click to upload or drag & drop</span>
-                            </div>
+                        <div className="form-field">
+                            <label>Storage location</label>
+                            <input type="text" className="input-field"
+                                placeholder="e.g. Storage Room A, Shelf 2"
+                                value={form.location} onChange={set('location')} />
                         </div>
                     </div>
 
-                    <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-                        <button type="button" onClick={() => navigate('/inventory')} style={{ padding: '0.75rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>Cancel</button>
-                        <button type="submit" className="btn-primary" disabled={saving}>
-                            <Save size={18} /> {saving ? 'Saving...' : 'Save Item'}
+                    <div className="form-field">
+                        <label>Description</label>
+                        <textarea className="input-field textarea"
+                            placeholder="Serial numbers, accessories, condition notes…"
+                            value={form.description} onChange={set('description')} />
+                    </div>
+
+                    <div className="form-actions">
+                        <button type="button" onClick={() => navigate('/inventory')} className="btn-ghost">
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn-primary btn-primary--compact" disabled={saving}>
+                            <Save size={15} strokeWidth={2.2} /> {saving ? 'Saving…' : 'Save item'}
                         </button>
                     </div>
                 </form>
