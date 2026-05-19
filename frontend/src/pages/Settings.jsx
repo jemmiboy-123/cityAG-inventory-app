@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
     Save, KeyRound, User, Building, Mail, Sun, Moon, Check, ShieldCheck,
-    AlertTriangle, Bell,
+    AlertTriangle, Bell, Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../context/PreferencesContext';
 
 const Settings = () => {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const { preferences, updatePreferences } = usePreferences();
 
     // Profile
     const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
     const [lastName,  setLastName]  = useState(user?.user_metadata?.last_name  || '');
+    const [email,     setEmail]     = useState(user?.email || '');
     const [ministry,  setMinistry]  = useState(user?.user_metadata?.ministry   || '');
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMsg, setProfileMsg] = useState(null);
@@ -35,6 +36,48 @@ const Settings = () => {
         setEmailAlerts(preferences.email_alerts);
     }, [preferences.low_stock_threshold, preferences.email_alerts]);
 
+    // Team (admin only)
+    const [teamUsers, setTeamUsers] = useState([]);
+    const [teamLoading, setTeamLoading] = useState(false);
+    const [teamMsg, setTeamMsg] = useState(null);
+    const [savingRoleId, setSavingRoleId] = useState(null);
+
+    useEffect(() => {
+        if (!isAdmin) return;
+        fetchTeam();
+    }, [isAdmin]);
+
+    const fetchTeam = async () => {
+        setTeamLoading(true);
+        const { data } = await supabase
+            .from('profiles')
+            .select('id, email, first_name, last_name, role, created_at')
+            .order('created_at', { ascending: true });
+        setTeamUsers(data || []);
+        setTeamLoading(false);
+    };
+
+    const handleRoleChange = async (targetUser, newRole) => {
+        setTeamMsg(null);
+        // Guard against demoting the last admin
+        if (newRole === 'user') {
+            const otherAdmins = teamUsers.filter(u => u.role === 'admin' && u.id !== targetUser.id);
+            if (otherAdmins.length === 0) {
+                setTeamMsg({ type: 'error', text: 'There must be at least one admin. Promote someone else first.' });
+                return;
+            }
+        }
+        setSavingRoleId(targetUser.id);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', targetUser.id);
+        setSavingRoleId(null);
+        if (error) { setTeamMsg({ type: 'error', text: error.message }); return; }
+        setTeamMsg({ type: 'success', text: `${targetUser.email} is now ${newRole}.` });
+        fetchTeam();
+    };
+
     // Theme — read once from localStorage; broadcast a custom event on change
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
@@ -54,16 +97,55 @@ const Settings = () => {
         e.preventDefault();
         setProfileMsg(null);
         setProfileSaving(true);
-        const { error } = await supabase.auth.updateUser({
+
+        const trimmedFirst    = firstName.trim();
+        const trimmedLast     = lastName.trim();
+        const trimmedEmail    = email.trim();
+        const trimmedMinistry = ministry.trim();
+        const emailChanged    = trimmedEmail && trimmedEmail !== user?.email;
+
+        // 1. Update auth.users (metadata always; email only if changed)
+        const authPayload = {
             data: {
-                first_name: firstName.trim(),
-                last_name:  lastName.trim(),
-                ministry:   ministry.trim(),
+                first_name: trimmedFirst,
+                last_name:  trimmedLast,
+                ministry:   trimmedMinistry,
             },
-        });
+        };
+        if (emailChanged) authPayload.email = trimmedEmail;
+
+        const { error: authErr } = await supabase.auth.updateUser(authPayload);
+        if (authErr) {
+            setProfileSaving(false);
+            setProfileMsg({ type: 'error', text: authErr.message });
+            return;
+        }
+
+        // 2. Sync the public.profiles row — the handle_new_user trigger only
+        //    fires on INSERT, so updates from the UI need a manual sync.
+        const profilePayload = {
+            first_name: trimmedFirst || null,
+            last_name:  trimmedLast  || null,
+        };
+        if (emailChanged) profilePayload.email = trimmedEmail;
+
+        const { error: profErr } = await supabase
+            .from('profiles')
+            .update(profilePayload)
+            .eq('id', user.id);
+
         setProfileSaving(false);
-        if (error) setProfileMsg({ type: 'error', text: error.message });
-        else       setProfileMsg({ type: 'success', text: 'Profile updated.' });
+        if (profErr) {
+            setProfileMsg({ type: 'error', text: `Saved to auth but profile sync failed: ${profErr.message}` });
+            return;
+        }
+
+        setProfileMsg({
+            type: 'success',
+            text: emailChanged
+                ? 'Profile saved. If email confirmation is enabled in Supabase, check the new address to confirm the change.'
+                : 'Profile updated.',
+        });
     };
 
     const savePreferences = async (e) => {
@@ -136,9 +218,12 @@ const Settings = () => {
                         <div className="input-with-icon">
                             <Mail size={15} className="input-icon" />
                             <input id="email" type="email" className="input-field"
-                                value={user?.email || ''} disabled />
+                                value={email} onChange={e => setEmail(e.target.value)}
+                                autoComplete="email" />
                         </div>
-                        <p className="form-hint">Contact an administrator to change your email address.</p>
+                        <p className="form-hint">
+                            Used to sign in. If Supabase email confirmation is on, you'll need to confirm any change from the new address.
+                        </p>
                     </div>
                     <div className="form-field">
                         <label htmlFor="ministry">Ministry or department</label>
@@ -260,6 +345,67 @@ const Settings = () => {
                     </button>
                 </div>
             </section>
+
+            {/* Team — admin only */}
+            {isAdmin && (
+                <section className="panel settings-section">
+                    <div className="settings-section-head">
+                        <h2 className="settings-section-title">
+                            <Users size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+                            Team
+                        </h2>
+                        <p className="settings-section-hint">Manage who can delete items and edit categories. Admins can promote or demote users.</p>
+                    </div>
+
+                    {teamMsg && (
+                        <div className={teamMsg.type === 'error' ? 'form-error' : 'form-success'} style={{ marginBottom: 12 }}>
+                            {teamMsg.text}
+                        </div>
+                    )}
+
+                    {teamLoading ? (
+                        <p className="muted-center">Loading team…</p>
+                    ) : (
+                        <div className="data-table-wrap">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {teamUsers.map(u => {
+                                        const name = [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || '—';
+                                        const isSelf = u.id === user?.id;
+                                        return (
+                                            <tr key={u.id}>
+                                                <td className="strong">
+                                                    {name}{isSelf && <span className="muted" style={{ marginLeft: 6, fontSize: '0.78rem' }}>(you)</span>}
+                                                </td>
+                                                <td className="muted">{u.email}</td>
+                                                <td>
+                                                    <select
+                                                        className="input-field"
+                                                        value={u.role}
+                                                        onChange={(e) => handleRoleChange(u, e.target.value)}
+                                                        disabled={savingRoleId === u.id}
+                                                        style={{ maxWidth: 140, padding: '4px 8px' }}
+                                                    >
+                                                        <option value="user">User</option>
+                                                        <option value="admin">Admin</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+            )}
 
             {/* About */}
             <section className="panel settings-section">
