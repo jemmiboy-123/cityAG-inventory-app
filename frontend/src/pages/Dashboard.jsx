@@ -35,8 +35,10 @@ const Dashboard = () => {
             { count: recentlyAdded },
         ] = await Promise.all([
             supabase.from('items').select('*', { count: 'exact', head: true }),
-            supabase.from('items').select('*', { count: 'exact', head: true }).lte('quantity', threshold).gt('quantity', 0),
-            supabase.from('items').select('*', { count: 'exact', head: true }).eq('quantity', 0),
+            supabase.from('items').select('*', { count: 'exact', head: true })
+                .eq('track_stock', true).lte('quantity', threshold).gt('quantity', 0),
+            supabase.from('items').select('*', { count: 'exact', head: true })
+                .eq('track_stock', true).eq('quantity', 0),
             supabase.from('items').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
         ]);
         setStats({
@@ -51,6 +53,7 @@ const Dashboard = () => {
         const { data } = await supabase
             .from('items')
             .select('id, name, quantity, location, categories(name)')
+            .eq('track_stock', true)
             .lte('quantity', threshold)
             .order('quantity', { ascending: true })
             .limit(5);

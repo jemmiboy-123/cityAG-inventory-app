@@ -58,8 +58,9 @@ const Reports = () => {
     // ── Inventory metrics ─────────────────────────────────────────
     const totalItems = items.length;
     const totalUnits = items.reduce((s, i) => s + (i.quantity || 0), 0);
-    const lowStock = items.filter(i => i.quantity > 0 && i.quantity <= threshold);
-    const outOfStock = items.filter(i => i.quantity === 0);
+    const tracked = items.filter(i => i.track_stock);
+    const lowStock = tracked.filter(i => i.quantity > 0 && i.quantity <= threshold);
+    const outOfStock = tracked.filter(i => i.quantity === 0);
     const attention = [...outOfStock, ...lowStock];
 
     const byCategory = categories.map(c => {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, MoreVertical } from 'lucide-react';
+import { Plus, X, MoreVertical, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const swatchPalette = ['#4a7c59', '#2a72b5', '#c2792a', '#7b4fa6', '#38a169', '#c25450'];
 
 const Categories = () => {
+    const { isAdmin } = useAuth();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -51,14 +53,34 @@ const Categories = () => {
                     <h1 className="dash-title">Categories</h1>
                     <p className="dash-subtitle">Organize your inventory by ministry or purpose.</p>
                 </div>
-                <button className="btn-primary btn-primary--compact" onClick={() => setShowForm(s => !s)}>
-                    {showForm
-                        ? <><X size={15} strokeWidth={2.2} /> Close</>
-                        : <><Plus size={15} strokeWidth={2.2} /> New Category</>}
-                </button>
+                {isAdmin && (
+                    <button className="btn-primary btn-primary--compact" onClick={() => setShowForm(s => !s)}>
+                        {showForm
+                            ? <><X size={15} strokeWidth={2.2} /> Close</>
+                            : <><Plus size={15} strokeWidth={2.2} /> New Category</>}
+                    </button>
+                )}
             </header>
 
-            {showForm && (
+            {!isAdmin && (
+                <div
+                    role="note"
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 12px',
+                        marginBottom: '1.25rem',
+                        background: 'var(--bg-color)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        color: 'var(--text-muted)',
+                        fontSize: '0.82rem',
+                    }}
+                >
+                    <Lock size={13} /> View only — administrators can add or edit categories.
+                </div>
+            )}
+
+            {isAdmin && showForm && (
                 <div className="panel" style={{ marginBottom: '1.25rem' }}>
                     {error && <div className="form-error">{error}</div>}
                     <form onSubmit={handleAdd} className="cat-form">
@@ -127,16 +149,20 @@ const Categories = () => {
                                     <p className="tile-name">{cat.name}</p>
                                     <p className="tile-meta">{count} {count === 1 ? 'item' : 'items'}</p>
                                 </div>
-                                <button className="icon-btn" aria-label={`More actions for ${cat.name}`}>
-                                    <MoreVertical size={15} />
-                                </button>
+                                {isAdmin && (
+                                    <button className="icon-btn" aria-label={`More actions for ${cat.name}`}>
+                                        <MoreVertical size={15} />
+                                    </button>
+                                )}
                             </div>
                         );
                     })}
-                    <button type="button" className="tile tile--add" onClick={() => setShowForm(true)}>
-                        <Plus size={18} />
-                        <span>New category</span>
-                    </button>
+                    {isAdmin && (
+                        <button type="button" className="tile tile--add" onClick={() => setShowForm(true)}>
+                            <Plus size={18} />
+                            <span>New category</span>
+                        </button>
+                    )}
                 </div>
             )}
         </div>
