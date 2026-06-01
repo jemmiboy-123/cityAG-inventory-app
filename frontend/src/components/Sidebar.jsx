@@ -53,7 +53,7 @@ const Sidebar = ({ darkMode, toggleDarkMode }) => {
     return (
         <aside className="sidebar">
             <div className="sidebar-brand">
-                <Logo size="small" />
+                <Logo size="medium" />
             </div>
 
             <nav className="sidebar-nav">
