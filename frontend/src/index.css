@@ -54,6 +54,12 @@
   padding: 0;
 }
 
+/* Root font size — scales every rem-based size across the app.
+   Bump this single value to make the whole system larger/smaller. */
+html {
+  font-size: 20px;
+}
+
 body {
   font-family: 'Outfit', sans-serif;
   background-color: var(--bg-color);
@@ -215,7 +221,7 @@ h3 {
 }
 
 .sidebar {
-  width: 280px;
+  width: 320px;
   background: var(--surface);
   border-right: 1px solid var(--border);
   padding: 2.5rem 1.5rem;
@@ -431,7 +437,7 @@ h3 {
    ============================================ */
 
 .dashboard-page {
-  max-width: 1200px;
+  max-width: 1440px;
 }
 
 .dash-header {
@@ -1584,8 +1590,7 @@ textarea.input-field {
 .auth-marketing > * { position: relative; }
 
 .auth-marketing-top {
-  filter: brightness(0) invert(1);
-  opacity: 0.95;
+  opacity: 1;
 }
 
 .auth-eyebrow {
@@ -1691,6 +1696,29 @@ textarea.input-field {
   font-weight: 500;
   color: var(--text-main);
   letter-spacing: -0.005em;
+}
+
+/* Label row with a trailing link (e.g. "Forgot password?") */
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.link-button:hover {
+  color: var(--primary);
 }
 
 .auth-form .form-field .input-field {

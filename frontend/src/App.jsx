@@ -10,6 +10,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 
@@ -70,6 +71,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Dashboard /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Inventory /></ProtectedRoute>} />

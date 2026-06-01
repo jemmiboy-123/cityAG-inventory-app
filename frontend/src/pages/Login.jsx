@@ -15,17 +15,31 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn } = useAuth();
+    const { signIn, resetPassword } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setNotice('');
         setLoading(true);
         const { error: signInErr } = await signIn(email, password);
         if (signInErr) { setError(signInErr.message); setLoading(false); }
         else navigate('/');
+    };
+
+    const handleForgotPassword = async () => {
+        setError('');
+        setNotice('');
+        if (!email) {
+            setError('Enter your email above, then click “Forgot password?” to get a reset link.');
+            return;
+        }
+        const { error: resetErr } = await resetPassword(email);
+        if (resetErr) setError(resetErr.message);
+        else setNotice(`Password reset link sent to ${email}. Check your inbox.`);
     };
 
     return (
@@ -71,6 +85,7 @@ const Login = () => {
                     </header>
 
                     {error && <div className="form-error">{error}</div>}
+                    {notice && <div className="form-success">{notice}</div>}
 
                     <form onSubmit={handleSubmit} className="stacked-form">
                         <div className="form-field">
@@ -91,7 +106,16 @@ const Login = () => {
                         </div>
 
                         <div className="form-field">
-                            <label htmlFor="password">Password</label>
+                            <div className="field-label-row">
+                                <label htmlFor="password">Password</label>
+                                <button
+                                    type="button"
+                                    className="link-button"
+                                    onClick={handleForgotPassword}
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
                             <div className="input-with-icon">
                                 <Lock size={15} className="input-icon" />
                                 <input

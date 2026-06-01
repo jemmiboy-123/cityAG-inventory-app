@@ -1,9 +1,9 @@
 import React from 'react';
 
 const LOGO_WIDTHS = {
-    small: 128,
-    medium: 160,
-    large: 192,
+    small: 200,
+    medium: 252,
+    large: 300,
 };
 
 const Logo = ({ size = 'medium', showLabel = false }) => {
