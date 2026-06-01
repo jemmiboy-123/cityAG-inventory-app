@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Package, Tags, BarChart3,
-    Settings, Moon, Sun, LogOut, Wallet,
+    Settings, Moon, Sun, LogOut, Wallet, HandCoins,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ const navGroups = [
     {
         label: 'Management',
         items: [
+            { icon: HandCoins, label: 'Borrowings', path: '/borrowings' },
             { icon: Wallet,    label: 'Accounting', path: '/accounting' },
             { icon: Tags,      label: 'Categories', path: '/categories' },
             { icon: BarChart3, label: 'Reports',    path: '/reports' },

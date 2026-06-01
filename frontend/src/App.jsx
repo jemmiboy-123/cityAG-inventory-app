@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import ItemForm from './pages/ItemForm';
+import Borrowings from './pages/Borrowings';
 import Categories from './pages/Categories';
 import Accounting from './pages/Accounting';
 import Reports from './pages/Reports';
@@ -76,6 +77,8 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Dashboard /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Inventory /></ProtectedRoute>} />
       <Route path="/items/new" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><ItemForm /></ProtectedRoute>} />
+      <Route path="/items/:id/edit" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><ItemForm /></ProtectedRoute>} />
+      <Route path="/borrowings" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Borrowings /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Categories /></ProtectedRoute>} />
       <Route path="/accounting" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Accounting /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute darkMode={darkMode} toggleDarkMode={toggleDarkMode}><Reports /></ProtectedRoute>} />
